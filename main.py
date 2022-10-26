@@ -1,22 +1,6 @@
+from constant import *
 import requests
 import bs4
-
-# headers из браузера
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:105.0) Gecko/20100101 Firefox/105.0',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Connection': 'keep-alive',
-    'Upgrade-Insecure-Requests': '1',
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'cross-site',
-    'Sec-Fetch-User': '?1',
-}
-
-URL = 'https://habr.com/ru/all/'
-KEYWORDS = ['браузер', 'алгоритм', 'инфраструктура', 'python', 'робот']
 
 response = requests.get(URL, headers=HEADERS)
 text = response.text
@@ -27,7 +11,7 @@ articles = soup.find_all("article")
 # print(len(articles))
 
 
-def insert_text() -> str:
+def insert_text(article) -> str:
     tmp = ''
     text = article.find_all('p')
     if text == []:
@@ -44,13 +28,44 @@ def insert_text() -> str:
             tmp += string
         return tmp
 
+
+# поиск по preview в статье
+def find_in_preview():
+    for article in articles:
+        text = insert_text(article)
+        for word in KEYWORDS:
+            if word in text.lower():
+                date = article.find('time').attrs["title"]
+                href = article.find(class_='tm-article-snippet__title-link').attrs["href"]
+                title = article.find('h2').find("span").text
+                result = f'{date} - {title} - {URL[0:-8]}{href}'
+                print(result)
+
+
+def insert_text_blog(url) -> str:
+    response = requests.get(url, headers=HEADERS)
+    text = response.text
+    soup = bs4.BeautifulSoup(text, features='html.parser')
+    post_body = soup.find(id='post-content-body').text
+    return post_body
+
+
+# поиск по тексту в статьях
+def find_in_blog():
+    for article in articles:
+        href = article.find(class_='tm-article-snippet__title-link').attrs["href"]
+        blog_url = f'{URL[0:-8]}{href}'
+        text = insert_text_blog(blog_url)
+        for word in KEYWORDS:
+            if word in text.lower():
+                date = article.find('time').attrs["title"]
+                href = article.find(class_='tm-article-snippet__title-link').attrs["href"]
+                title = article.find('h2').find("span").text
+                result = f'{date} - {title} - {URL[0:-8]}{href}'
+                print(result)
+
+
 # Вывести в консоль список подходящих статей в формате: <дата> - <заголовок> - <ссылка>
-for article in articles:
-    text = insert_text()
-    for word in KEYWORDS:
-        if word in text.lower():
-            date = article.find('time').attrs["title"]
-            href = article.find(class_='tm-article-snippet__title-link').attrs["href"]
-            title = article.find('h2').find("span").text
-            result = f'{date} - {title} - {URL[0:-5]}{href}'
-            print(result)
+if __name__ == "__main__":
+    # find_in_preview()
+    find_in_blog()
